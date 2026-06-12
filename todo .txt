@@ -1,0 +1,7 @@
+on nous demande de faire un framework et un cote application 
+et ce framework(en java) doivent d'etre exporter en jar et on a un apllication de code qui juste declare ce 
+framework et tout ce qui ce passe dans le Framework apparait a partir d'un url(n'importe quel url)
+dans le Framework on doit juste voir un Servelet (FrontControllerServelet qui contient un doGet,doPost,Processrequest)
+et dans l'appi de test on declare juste le servelet dans web xml et on doit voir ce que contient le framework dans le framework on doit ecrire un petit text alors
+
+localhost/8080/nom de l'application/(tout ce qu'on ecrit doit converger vers le Framework)
