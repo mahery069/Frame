@@ -1,59 +1,33 @@
 #!/bin/bash
 
-APP_NAME="Platzao"
 FRAMEWORK_NAME="mini-framework"
-
-# Sources
 FRAMEWORK_SRC="src/main/java"
-APP_SRC="src/main/java"
-WEB_DIR="src/main/webapp"
-WEB_XML="src/main/xml"
 
-# Build
 BUILD_DIR="build"
-FRAMEWORK_BUILD="$BUILD_DIR/framework-classes"
-APP_BUILD="$BUILD_DIR/app-classes"
+FRAMEWORK_BUILD="$BUILD_DIR/classes"
 FRAMEWORK_JAR="$BUILD_DIR/$FRAMEWORK_NAME.jar"
-WAR_STAGING="$BUILD_DIR/war"
 
-# Tomcat
-LIB_DIR="/home/mahery/Documents/tomcat-10.0.16/lib"
-TOMCAT_WEBAPPS="/home/mahery/Documents/tomcat-10.0.16/webapps"
-SERVLET_API_JAR="$LIB_DIR/servlet-api.jar"
+SERVLET_API_JAR="/home/mahery/Documents/tomcat-10.0.16/lib/servlet-api.jar"
 
-RED='\033[0;31m'; GREEN='\033[0;32m'
-CYAN='\033[0;36m'; YELLOW='\033[1;33m'; NC='\033[0m'
-
-step() { echo -e "\n${CYAN}▶ $1${NC}"; }
-ok()   { echo -e "${GREEN}  ✔ $1${NC}"; }
-err()  { echo -e "${RED}  ✘ $1${NC}"; exit 1; }
-warn() { echo -e "${YELLOW}  ⚠ $1${NC}"; }
-
-
-step "Nettoyage..."
+echo "Nettoyage..."
 rm -rf "$BUILD_DIR"
 mkdir -p "$FRAMEWORK_BUILD"
-mkdir -p "$APP_BUILD"
-mkdir -p "$WAR_STAGING/WEB-INF/classes"
-mkdir -p "$WAR_STAGING/WEB-INF/lib"
-ok "Répertoires créés"
 
+echo "Compilation du framework..."
 
-# 1. Compilation du FRAMEWORK
-step "Compilation du Framework ($FRAMEWORK_NAME)..."
-
-find "$FRAMEWORK_SRC" -name "*.java" > "$BUILD_DIR/framework-sources.txt"
-[ -s "$BUILD_DIR/framework-sources.txt" ] || err "Aucun .java trouvé dans $FRAMEWORK_SRC"
+find "$FRAMEWORK_SRC" -name "*.java" > sources.txt
 
 javac -cp "$SERVLET_API_JAR" \
-      -d  "$FRAMEWORK_BUILD" \
-      @"$BUILD_DIR/framework-sources.txt" || err "Échec compilation framework"
-ok "Framework compilé"
+      -d "$FRAMEWORK_BUILD" \
+      @sources.txt
 
+if [ $? -ne 0 ]; then
+    echo "Erreur de compilation"
+    exit 1
+fi
 
-# 2. Export du FRAMEWORK en JAR
+echo "Création du JAR..."
 
-step "Export → $FRAMEWORK_JAR"
+jar -cf "$FRAMEWORK_JAR" -C "$FRAMEWORK_BUILD" .
 
-jar -cf "$FRAMEWORK_JAR" -C "$FRAMEWORK_BUILD" . || err "Échec création JAR"
-ok "JAR créé : $FRAMEWORK_JAR  ($(du -h "$FRAMEWORK_JAR" | cut -f1))"
+echo "Framework exporté : $FRAMEWORK_JAR"
