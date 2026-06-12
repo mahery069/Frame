@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# ================================================================
-#  BUILD & DEPLOY — Mini-Framework
 APP_NAME="Platzao"
 FRAMEWORK_NAME="mini-framework"
 
@@ -31,9 +29,7 @@ ok()   { echo -e "${GREEN}  ✔ $1${NC}"; }
 err()  { echo -e "${RED}  ✘ $1${NC}"; exit 1; }
 warn() { echo -e "${YELLOW}  ⚠ $1${NC}"; }
 
-# ================================================================
-# 0. Nettoyage
-# ================================================================
+
 step "Nettoyage..."
 rm -rf "$BUILD_DIR"
 mkdir -p "$FRAMEWORK_BUILD"
@@ -42,9 +38,8 @@ mkdir -p "$WAR_STAGING/WEB-INF/classes"
 mkdir -p "$WAR_STAGING/WEB-INF/lib"
 ok "Répertoires créés"
 
-# ================================================================
+
 # 1. Compilation du FRAMEWORK
-# ================================================================
 step "Compilation du Framework ($FRAMEWORK_NAME)..."
 
 find "$FRAMEWORK_SRC" -name "*.java" > "$BUILD_DIR/framework-sources.txt"
@@ -55,9 +50,9 @@ javac -cp "$SERVLET_API_JAR" \
       @"$BUILD_DIR/framework-sources.txt" || err "Échec compilation framework"
 ok "Framework compilé"
 
-# ================================================================
+
 # 2. Export du FRAMEWORK en JAR
-# ================================================================
+
 step "Export → $FRAMEWORK_JAR"
 
 jar -cf "$FRAMEWORK_JAR" -C "$FRAMEWORK_BUILD" . || err "Échec création JAR"
