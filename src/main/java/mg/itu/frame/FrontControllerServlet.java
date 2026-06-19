@@ -33,4 +33,7 @@ public class FrontControllerServlet extends HttpServlet {
         PrintWriter out = resp.getWriter();
         out.print("<h1>Manaona tompoko</h1>");
     }
+    void init() {
+        System.out.println("FrontControllerServlet initialized");
+    }
 }
