@@ -1,14 +1,33 @@
-package frame;
+package mg.itu.frame;
 
+import jakarta.servlet.ServletConfig;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import mg.itu.annotation.Controller.Controller;
+import mg.itu.utils.Utils;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.List;
+
 
 public class FrontControllerServlet extends HttpServlet {
+    
+    private List<String> controllers = new ArrayList<>();
+
+    @Override
+    public void init(ServletConfig config) throws ServletException {
+        String basePackages = config.getInitParameter("base-package");
+        if (basePackages != null) {
+            for (String pkg : basePackages.split(";")) {
+                List<String> found = Utils.findClassesByAnnotation(pkg.trim(), Controller.class);
+                controllers.addAll(found);
+            }
+        }
+    }
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
@@ -32,8 +51,5 @@ public class FrontControllerServlet extends HttpServlet {
         resp.setContentType("text/html;charset=UTF-8");
         PrintWriter out = resp.getWriter();
         out.print("<h1>Manaona tompoko</h1>");
-    }
-    void init() {
-        System.out.println("FrontControllerServlet initialized");
     }
 }
