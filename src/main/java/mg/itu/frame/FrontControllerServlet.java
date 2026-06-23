@@ -51,5 +51,14 @@ public class FrontControllerServlet extends HttpServlet {
         resp.setContentType("text/html;charset=UTF-8");
         PrintWriter out = resp.getWriter();
         out.print("<h1>Manaona tompoko</h1>");
+        out.print("<h2>Controllers détectés:</h2>");
+        out.print("<ul>");
+        for (String controller : controllers) {
+            out.print("<li>" + controller + "</li>");
+        }
+        out.print("</ul>");
+        if (controllers.isEmpty()) {
+            out.print("<p>Aucun controller détecté</p>");
+        }
     }
 }
