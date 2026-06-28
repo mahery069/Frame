@@ -46,6 +46,13 @@ public class FrontControllerServlet extends HttpServlet {
 
         String uri = req.getRequestURI();
         String method = req.getMethod();
+        
+        // Permettre de surcharger la méthode via un paramètre URL
+        String methodParam = req.getParameter("method");
+        if (methodParam != null && !methodParam.isEmpty()) {
+            method = methodParam.toUpperCase();
+        }
+        
         String appName = req.getContextPath();
 
         resp.setContentType("text/html;charset=UTF-8");
