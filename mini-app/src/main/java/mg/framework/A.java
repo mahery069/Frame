@@ -1,17 +1,17 @@
 package mg.framework;
 
 import mg.itu.annotation.Controller.Controller;
-import mg.itu.annotation.RequestMapping;
+import mg.itu.annotation.Url;
 
 @Controller
 public class A{
     
-    @RequestMapping(url = "/bonjour", method = "GET")
+    @Url("/bonjour")
     public String direBonjour() {
         return "Bonjour";
     }
     
-    @RequestMapping(url = "/salut", method = "POST")
+    @Url("/salut")
     public String direSalut() {
         return "Salut";
     }

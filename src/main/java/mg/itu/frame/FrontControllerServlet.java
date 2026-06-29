@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import mg.itu.annotation.Controller.Controller;
 import mg.itu.annotation.RequestMapping;
+import mg.itu.annotation.Url;
 import mg.itu.utils.Utils;
 
 import java.io.IOException;
@@ -23,15 +24,15 @@ public class FrontControllerServlet extends HttpServlet {
     
     private static class RouteInfo {
         String url;
-        String httpMethod;
         String className;
         String methodName;
+        Method method;
         
-        RouteInfo(String url, String httpMethod, String className, String methodName) {
+        RouteInfo(String url, String className, String methodName, Method method) {
             this.url = url;
-            this.httpMethod = httpMethod;
             this.className = className;
             this.methodName = methodName;
+            this.method = method;
         }
     }
 
@@ -53,9 +54,9 @@ public class FrontControllerServlet extends HttpServlet {
                 Class<?> clazz = Class.forName(className);
                 Method[] methods = clazz.getDeclaredMethods();
                 for (Method method : methods) {
-                    if (method.isAnnotationPresent(RequestMapping.class)) {
-                        RequestMapping mapping = method.getAnnotation(RequestMapping.class);
-                        routes.add(new RouteInfo(mapping.url(), mapping.method(), className, method.getName()));
+                    if (method.isAnnotationPresent(Url.class)) {
+                        Url urlAnnotation = method.getAnnotation(Url.class);
+                        routes.add(new RouteInfo(urlAnnotation.value(), className, method.getName(), method));
                     }
                 }
             } catch (ClassNotFoundException e) {
@@ -80,14 +81,6 @@ public class FrontControllerServlet extends HttpServlet {
             throws ServletException, IOException {
 
         String uri = req.getRequestURI();
-        String method = req.getMethod();
-        
-        // Permettre de surcharger la méthode via un paramètre URL
-        String methodParam = req.getParameter("method");
-        if (methodParam != null && !methodParam.isEmpty()) {
-            method = methodParam.toUpperCase();
-        }
-        
         String appName = req.getContextPath();
         String path = uri.substring(appName.length());
 
@@ -97,30 +90,40 @@ public class FrontControllerServlet extends HttpServlet {
         // Rechercher la route correspondante
         RouteInfo foundRoute = null;
         for (RouteInfo route : routes) {
-            if (route.url.equals(path) && route.httpMethod.equalsIgnoreCase(method)) {
+            if (route.url.equals(path)) {
                 foundRoute = route;
                 break;
             }
         }
         
         if (foundRoute != null) {
-            // URL trouvée - afficher les informations sans exécuter
-            out.print("<h1>URL trouvée</h1>");
-            out.print("<p><strong>URL:</strong> " + foundRoute.url + "</p>");
-            out.print("<p><strong>Méthode HTTP:</strong> " + foundRoute.httpMethod + "</p>");
-            out.print("<p><strong>Classe:</strong> " + foundRoute.className + "</p>");
-            out.print("<p><strong>Méthode:</strong> " + foundRoute.methodName + "</p>");
+            // URL trouvée - exécuter la méthode
+            try {
+                Class<?> clazz = Class.forName(foundRoute.className);
+                Object controllerInstance = clazz.getDeclaredConstructor().newInstance();
+                Object result = foundRoute.method.invoke(controllerInstance);
+                
+                // Afficher le résultat
+                if (result != null) {
+                    out.print(result.toString());
+                } else {
+                    out.print("<p>Méthode exécutée mais retourne null</p>");
+                }
+            } catch (Exception e) {
+                out.print("<p>Erreur lors de l'exécution: " + e.getMessage() + "</p>");
+                e.printStackTrace();
+            }
         } else {
             // URL inconnue - afficher message et liste des URLs disponibles
             out.print("<h1>URL inconnue</h1>");
-            out.print("<p>L'URL <strong>" + path + "</strong> avec la méthode <strong>" + method + "</strong> n'existe pas.</p>");
+            out.print("<p>L'URL <strong>" + path + "</strong> n'existe pas.</p>");
             out.print("<h2>URLs disponibles:</h2>");
             out.print("<ul>");
             if (routes.isEmpty()) {
                 out.print("<p>Aucune URL disponible</p>");
             } else {
                 for (RouteInfo route : routes) {
-                    out.print("<li>" + route.httpMethod + " " + route.url + " -> " + route.className + "." + route.methodName + "()</li>");
+                    out.print("<li>" + route.url + " -> " + route.className + "." + route.methodName + "()</li>");
                 }
             }
             out.print("</ul>");
