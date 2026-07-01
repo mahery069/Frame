@@ -6,8 +6,8 @@ SRC_DIR="src/main/java"
 WEB_DIR="src/main/webapp"
 WEB_XML="src/main/xml"
 BUILD_DIR="build"
-LIB_DIR="/home/mahery/Documents/tomcat-10.0.16/lib"
-TOMCAT_WEBAPPS="/home/mahery/Documents/tomcat-10.0.16/webapps"
+LIB_DIR="/home/harison/Documents/tomcat-10.0.16/lib"
+TOMCAT_WEBAPPS="/home/harison/Documents/tomcat-10.0.16/webapps"
 SERVLET_API_JAR="$LIB_DIR/servlet-api.jar"
 FRAMEWORK_JAR="lib/mini-framework.jar"      # JAR du framework copié dans lib/
 
