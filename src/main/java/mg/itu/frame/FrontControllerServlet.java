@@ -18,10 +18,10 @@ import java.util.List;
 
 public class FrontControllerServlet extends HttpServlet {
     
-    private List<String> controllers = new ArrayList<>();
-    private List<RouteInfo> routes = new ArrayList<>();
+  /*  private List<String> controllers = new ArrayList<>();
+    private List<RouteInfo> routes = new ArrayList<>();*/
     
-    private static class RouteInfo {
+    public static class RouteInfo {
         String url;
         String httpMethod;
         String className;
@@ -35,7 +35,7 @@ public class FrontControllerServlet extends HttpServlet {
         }
     }
 
-    @Override
+  /*  @Override
     public void init(ServletConfig config) throws ServletException {
         String basePackages = config.getInitParameter("base-package");
         if (basePackages != null) {
@@ -62,7 +62,7 @@ public class FrontControllerServlet extends HttpServlet {
                 e.printStackTrace();
             }
         }
-    }
+    } */
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
@@ -78,7 +78,11 @@ public class FrontControllerServlet extends HttpServlet {
 
     protected void processRequest(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
-
+        List<RouteInfo> routes =
+        (List<RouteInfo>) getServletContext().getAttribute("routes");
+        if (routes == null) {
+            routes = (List<RouteInfo>) getServletContext().getAttribute("mappingUrls");
+        }
         String uri = req.getRequestURI();
         String method = req.getMethod();
         
