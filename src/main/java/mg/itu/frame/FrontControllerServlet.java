@@ -1,5 +1,6 @@
 package mg.itu.frame;
 
+import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletConfig;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
@@ -14,6 +15,7 @@ import java.io.PrintWriter;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 
 public class FrontControllerServlet extends HttpServlet {
@@ -95,9 +97,6 @@ public class FrontControllerServlet extends HttpServlet {
         String appName = req.getContextPath();
         String path = uri.substring(appName.length());
 
-        resp.setContentType("text/html;charset=UTF-8");
-        PrintWriter out = resp.getWriter();
-        
         // Rechercher la route correspondante
         RouteInfo foundRoute = null;
         for (RouteInfo route : routes) {
@@ -106,16 +105,11 @@ public class FrontControllerServlet extends HttpServlet {
                 break;
             }
         }
-        
-        if (foundRoute != null) {
-            // URL trouvée - afficher les informations sans exécuter
-            out.print("<h1>URL trouvée</h1>");
-            out.print("<p><strong>URL:</strong> " + foundRoute.url + "</p>");
-            out.print("<p><strong>Méthode HTTP:</strong> " + foundRoute.httpMethod + "</p>");
-            out.print("<p><strong>Classe:</strong> " + foundRoute.className + "</p>");
-            out.print("<p><strong>Méthode:</strong> " + foundRoute.methodName + "</p>");
-        } else {
+
+        if (foundRoute == null) {
             // URL inconnue - afficher message et liste des URLs disponibles
+            resp.setContentType("text/html;charset=UTF-8");
+            PrintWriter out = resp.getWriter();
             out.print("<h1>URL inconnue</h1>");
             out.print("<p>L'URL <strong>" + path + "</strong> avec la méthode <strong>" + method + "</strong> n'existe pas.</p>");
             out.print("<h2>URLs disponibles:</h2>");
@@ -128,6 +122,44 @@ public class FrontControllerServlet extends HttpServlet {
                 }
             }
             out.print("</ul>");
+            return;
+        }
+
+        try {
+            // Instancier le contrôleur et exécuter la méthode par réflexion
+            Class<?> clazz = Class.forName(foundRoute.className);
+            Object instance = clazz.getDeclaredConstructor().newInstance();
+            Method laMethode = clazz.getDeclaredMethod(foundRoute.methodName);
+            Object resultat = laMethode.invoke(instance);
+
+            if (resultat instanceof ModelAndView) {
+                ModelAndView mv = (ModelAndView) resultat;
+
+                // Étape 1 - Construire le chemin JSP à partir du préfixe/suffixe de web.xml
+                String prefixe = getServletConfig().getInitParameter("prefixe");
+                String suffixe = getServletConfig().getInitParameter("suffixe");
+                if (prefixe == null) prefixe = "";
+                if (suffixe == null) suffixe = "";
+                String cheminJsp = prefixe + mv.getUrl() + suffixe;
+
+                // Étape 2 - Injecter les données dans la requête HTTP
+                for (Map.Entry<String, Object> entry : mv.getData().entrySet()) {
+                    req.setAttribute(entry.getKey(), entry.getValue());
+                }
+
+                // Étape 3 - Forward vers la JSP
+                RequestDispatcher dispatcher = req.getRequestDispatcher(cheminJsp);
+                dispatcher.forward(req, resp);
+
+            } else {
+                // La méthode a retourné autre chose (ex: String) -> on l'affiche telle quelle
+                resp.setContentType("text/html;charset=UTF-8");
+                PrintWriter out = resp.getWriter();
+                out.print(resultat != null ? resultat.toString() : "");
+            }
+
+        } catch (Exception e) {
+            throw new ServletException("Erreur lors de l'exécution de " + foundRoute.className + "." + foundRoute.methodName + "()", e);
         }
     }
 }
