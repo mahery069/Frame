@@ -28,12 +28,14 @@ public class FrontControllerServlet extends HttpServlet {
         String httpMethod;
         String className;
         String methodName;
+        boolean webApi;
         
-        RouteInfo(String url, String httpMethod, String className, String methodName) {
+        RouteInfo(String url, String httpMethod, String className, String methodName, boolean webApi) {
             this.url = url;
             this.httpMethod = httpMethod;
             this.className = className;
             this.methodName = methodName;
+            this.webApi = webApi;
         }
     }
 
@@ -131,6 +133,17 @@ public class FrontControllerServlet extends HttpServlet {
             Object instance = clazz.getDeclaredConstructor().newInstance();
             Method laMethode = clazz.getDeclaredMethod(foundRoute.methodName);
             Object resultat = laMethode.invoke(instance);
+
+            if (foundRoute.webApi) {
+                resp.setContentType("application/json;charset=UTF-8");
+                PrintWriter out = resp.getWriter();
+                if (resultat instanceof String) {
+                    out.print((String) resultat);
+                } else {
+                    out.print(Utils.toJson(resultat));
+                }
+                return;
+            }
 
             if (resultat instanceof ModelAndView) {
                 ModelAndView mv = (ModelAndView) resultat;

@@ -11,6 +11,7 @@ import java.util.List;
 
 import mg.itu.annotation.Controller.Controller;
 import mg.itu.annotation.RequestMapping;
+import mg.itu.annotation.WebAPI.WebAPI;
 import mg.itu.utils.Utils;
 
 @WebListener
@@ -47,13 +48,15 @@ public class FrontControllerListener implements ServletContextListener {
 
                                 RequestMapping mapping =
                                         method.getAnnotation(RequestMapping.class);
+                                boolean webApi = method.isAnnotationPresent(WebAPI.class);
 
                                 routes.add(
                                         new FrontControllerServlet.RouteInfo(
                                                 mapping.url(),
                                                 mapping.method(),
                                                 className,
-                                                method.getName()
+                                        method.getName(),
+                                        webApi
                                         )
                                 );
                             }

@@ -2,11 +2,163 @@ package mg.itu.utils;
 
 import java.io.File;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Array;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.IdentityHashMap;
+import java.util.Map;
 import java.util.List;
+import java.util.Set;
 
 public class Utils {
+    public static String toJson(Object value) {
+        StringBuilder builder = new StringBuilder();
+        Set<Object> visited = java.util.Collections.newSetFromMap(new IdentityHashMap<>());
+        appendJson(builder, value, visited);
+        return builder.toString();
+    }
+
+    private static void appendJson(StringBuilder builder, Object value, Set<Object> visited) {
+        if (value == null) {
+            builder.append("null");
+            return;
+        }
+
+        if (value instanceof String || value instanceof Character) {
+            builder.append('"').append(escapeJson(value.toString())).append('"');
+            return;
+        }
+
+        if (value instanceof Number || value instanceof Boolean) {
+            builder.append(value.toString());
+            return;
+        }
+
+        if (value.getClass().isEnum()) {
+            builder.append('"').append(escapeJson(value.toString())).append('"');
+            return;
+        }
+
+        if (value.getClass().isArray()) {
+            builder.append('[');
+            int length = Array.getLength(value);
+            for (int index = 0; index < length; index++) {
+                if (index > 0) {
+                    builder.append(',');
+                }
+                appendJson(builder, Array.get(value, index), visited);
+            }
+            builder.append(']');
+            return;
+        }
+
+        if (value instanceof Collection<?>) {
+            builder.append('[');
+            boolean first = true;
+            for (Object element : (Collection<?>) value) {
+                if (!first) {
+                    builder.append(',');
+                }
+                appendJson(builder, element, visited);
+                first = false;
+            }
+            builder.append(']');
+            return;
+        }
+
+        if (value instanceof Map<?, ?>) {
+            builder.append('{');
+            boolean first = true;
+            for (Map.Entry<?, ?> entry : ((Map<?, ?>) value).entrySet()) {
+                if (!first) {
+                    builder.append(',');
+                }
+                builder.append('"')
+                        .append(escapeJson(String.valueOf(entry.getKey())))
+                        .append('"')
+                        .append(':');
+                appendJson(builder, entry.getValue(), visited);
+                first = false;
+            }
+            builder.append('}');
+            return;
+        }
+
+        if (visited.contains(value)) {
+            builder.append("null");
+            return;
+        }
+
+        visited.add(value);
+        builder.append('{');
+        boolean first = true;
+        Class<?> current = value.getClass();
+        while (current != null && current != Object.class) {
+            for (Field field : current.getDeclaredFields()) {
+                if (Modifier.isStatic(field.getModifiers()) || Modifier.isTransient(field.getModifiers())) {
+                    continue;
+                }
+                if (!first) {
+                    builder.append(',');
+                }
+                field.setAccessible(true);
+                builder.append('"')
+                        .append(escapeJson(field.getName()))
+                        .append('"')
+                        .append(':');
+                try {
+                    appendJson(builder, field.get(value), visited);
+                } catch (IllegalAccessException e) {
+                    builder.append("null");
+                }
+                first = false;
+            }
+            current = current.getSuperclass();
+        }
+        builder.append('}');
+        visited.remove(value);
+    }
+
+    private static String escapeJson(String value) {
+        StringBuilder builder = new StringBuilder();
+        for (int index = 0; index < value.length(); index++) {
+            char character = value.charAt(index);
+            switch (character) {
+                case '"':
+                    builder.append("\\\"");
+                    break;
+                case '\\':
+                    builder.append("\\\\");
+                    break;
+                case '\b':
+                    builder.append("\\b");
+                    break;
+                case '\f':
+                    builder.append("\\f");
+                    break;
+                case '\n':
+                    builder.append("\\n");
+                    break;
+                case '\r':
+                    builder.append("\\r");
+                    break;
+                case '\t':
+                    builder.append("\\t");
+                    break;
+                default:
+                    if (character < 0x20) {
+                        builder.append(String.format("\\u%04x", (int) character));
+                    } else {
+                        builder.append(character);
+                    }
+            }
+        }
+        return builder.toString();
+    }
+
     public static List<String> findClassesByAnnotation(
             String packageName,
             Class<? extends Annotation> annotation) {
