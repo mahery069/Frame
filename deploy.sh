@@ -7,7 +7,7 @@ BUILD_DIR="build"
 FRAMEWORK_BUILD="$BUILD_DIR/classes"
 FRAMEWORK_JAR="$BUILD_DIR/$FRAMEWORK_NAME.jar"
 
-SERVLET_API_JAR="/home/harison/Documents/tomcat-10.0.16/lib/servlet-api.jar"
+SERVLET_API_JAR="/home/harison/Documents/hh/tomcat-10.0.16/lib/servlet-api.jar"
 
 echo "Nettoyage..."
 rm -rf "$BUILD_DIR"

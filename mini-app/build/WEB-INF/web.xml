@@ -12,6 +12,14 @@
             <param-name>base-package</param-name>
             <param-value>mg.framework</param-value>
         </init-param>
+        <init-param>
+            <param-name>prefixe</param-name>
+            <param-value>/WEB-INF/views/</param-value>
+        </init-param>
+        <init-param>
+            <param-name>suffixe</param-name>
+            <param-value>.jsp</param-value>
+        </init-param>
         <load-on-startup>1</load-on-startup>
     </servlet>
     
