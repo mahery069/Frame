@@ -1,16 +1,15 @@
 #!/bin/bash
 
 # Définition des variables
-APP_NAME="app"
+APP_NAME="Appli"  # Nom de l'application
 SRC_DIR="src/main/java"
 WEB_DIR="src/main/webapp"
 WEB_XML="src/main/xml"
 BUILD_DIR="build"
-TOMCAT_HOME="/home/harison/Documents/hh/tomcat-10.0.16"
-LIB_DIR="$TOMCAT_HOME/lib"
-TOMCAT_WEBAPPS="$TOMCAT_HOME/webapps"
+LIB_DIR="/home/harison/Documents/hh/tomcat-10.0.16/lib"
+TOMCAT_WEBAPPS="/home/harison/Documents/hh/tomcat-10.0.16/webapps"
 SERVLET_API_JAR="$LIB_DIR/servlet-api.jar"
-FRAMEWORK_JAR="lib/mini-framework.jar"      # JAR du framework copié dans lib/
+FRAMEWORK_JAR="../build/mini-framework.jar"  # JAR du framework exporté à la racine
 
 # Nettoyage et création du répertoire temporaire
 rm -rf $BUILD_DIR
@@ -34,8 +33,7 @@ jar -cvf $APP_NAME.war *
 cd ..
 
 # Déploiement dans Tomcat
-mkdir -p "$TOMCAT_WEBAPPS"
-cp -f "$BUILD_DIR/$APP_NAME.war" "$TOMCAT_WEBAPPS/"
+cp -f $BUILD_DIR/$APP_NAME.war $TOMCAT_WEBAPPS/
 
 echo ""
 echo "Déploiement terminé. Redémarrez Tomcat si nécessaire."
