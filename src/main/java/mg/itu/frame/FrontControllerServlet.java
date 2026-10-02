@@ -19,10 +19,10 @@ import java.lang.reflect.Parameter;
 import java.util.List;
 import java.util.Map;
 
-
 public class FrontControllerServlet extends HttpServlet {
 
     public static class RouteInfo {
+
         String url;
         String httpMethod;
         String className;
@@ -58,8 +58,8 @@ public class FrontControllerServlet extends HttpServlet {
         // sinon les accents des champs de formulaire (POST) sont mal décodés.
         req.setCharacterEncoding("UTF-8");
 
-        List<RouteInfo> routes =
-                (List<RouteInfo>) getServletContext().getAttribute("routes");
+        List<RouteInfo> routes
+                = (List<RouteInfo>) getServletContext().getAttribute("routes");
         if (routes == null) {
             routes = (List<RouteInfo>) getServletContext().getAttribute("mappingUrls");
         }
@@ -148,8 +148,12 @@ public class FrontControllerServlet extends HttpServlet {
                 // Étape 1 - Construire le chemin JSP à partir du préfixe/suffixe de web.xml
                 String prefixe = getServletConfig().getInitParameter("prefixe");
                 String suffixe = getServletConfig().getInitParameter("suffixe");
-                if (prefixe == null) prefixe = "";
-                if (suffixe == null) suffixe = "";
+                if (prefixe == null) {
+                    prefixe = "";
+                }
+                if (suffixe == null) {
+                    suffixe = "";
+                }
                 String cheminJsp = prefixe + mv.getUrl() + suffixe;
 
                 // Étape 2 - Injecter les données dans la requête HTTP
@@ -208,9 +212,9 @@ public class FrontControllerServlet extends HttpServlet {
     }
 
     /**
-     * Retrouve la méthode du contrôleur correspondant à la route.
-     * On compare nom + url + méthode HTTP (getDeclaredMethod(nom) ne marche plus
-     * dès que la méthode a des arguments).
+     * Retrouve la méthode du contrôleur correspondant à la route. On compare
+     * nom + url + méthode HTTP (getDeclaredMethod(nom) ne marche plus dès que
+     * la méthode a des arguments).
      */
     private Method trouverMethode(Class<?> clazz, RouteInfo route) throws NoSuchMethodException {
         for (Method m : clazz.getDeclaredMethods()) {
@@ -228,9 +232,9 @@ public class FrontControllerServlet extends HttpServlet {
     }
 
     /**
-     * Construit le tableau d'arguments pour l'invocation :
-     *  - HttpServletRequest / HttpServletResponse : injectés tels quels
-     *  - autres types : valeur du paramètre de requête, convertie vers le type de l'argument
+     * Construit le tableau d'arguments pour l'invocation : - HttpServletRequest
+     * / HttpServletResponse : injectés tels quels - autres types : valeur du
+     * paramètre de requête, convertie vers le type de l'argument
      */
     private Object[] construireArguments(Method m, HttpServletRequest req, HttpServletResponse resp) {
         Parameter[] params = m.getParameters();
@@ -261,7 +265,10 @@ public class FrontControllerServlet extends HttpServlet {
         return args;
     }
 
-    /** Nom du champ de formulaire : @RequestParam("x") sinon nom de l'argument Java. */
+    /**
+     * Nom du champ de formulaire : @RequestParam("x") sinon nom de l'argument
+     * Java.
+     */
     private String nomParametre(Parameter p) {
         for (Annotation ann : p.getAnnotations()) {
             if (ann.annotationType().getName().equals("mg.itu.annotation.RequestParam")) {
@@ -280,23 +287,39 @@ public class FrontControllerServlet extends HttpServlet {
         if (!p.isNamePresent()) {
             throw new IllegalStateException(
                     "Argument '" + p.getName() + "' sans nom exploitable : ajouter @RequestParam(\"...\") "
-                            + "ou compiler la mini-app avec javac -parameters");
+                    + "ou compiler la mini-app avec javac -parameters");
         }
         return p.getName();
     }
 
-    /** Conversion String (champ de formulaire) -> type de l'argument. */
+    /**
+     * Conversion String (champ de formulaire) -> type de l'argument.
+     */
     private Object convertir(String v, Class<?> type) {
         boolean vide = (v == null || v.trim().isEmpty());
 
-        if (type == String.class) return v;
+        if (type == String.class) {
+            return v;
+        }
 
-        if (type == int.class)      return vide ? 0 : Integer.parseInt(v.trim());
-        if (type == Integer.class)  return vide ? null : Integer.valueOf(v.trim());
-        if (type == long.class)     return vide ? 0L : Long.parseLong(v.trim());
-        if (type == Long.class)     return vide ? null : Long.valueOf(v.trim());
-        if (type == double.class)   return vide ? 0.0 : Double.parseDouble(v.trim());
-        if (type == Double.class)   return vide ? null : Double.valueOf(v.trim());
+        if (type == int.class) {
+            return vide ? 0 : Integer.parseInt(v.trim());
+        }
+        if (type == Integer.class) {
+            return vide ? null : Integer.valueOf(v.trim());
+        }
+        if (type == long.class) {
+            return vide ? 0L : Long.parseLong(v.trim());
+        }
+        if (type == Long.class) {
+            return vide ? null : Long.valueOf(v.trim());
+        }
+        if (type == double.class) {
+            return vide ? 0.0 : Double.parseDouble(v.trim());
+        }
+        if (type == Double.class) {
+            return vide ? null : Double.valueOf(v.trim());
+        }
 
         if (type == boolean.class || type == Boolean.class) {
             // une case à cocher envoie "on" si cochée, rien sinon

@@ -31,8 +31,8 @@ public class FrontControllerListener implements ServletContextListener {
 
             for (String pkg : basePackages.split(";")) {
 
-                List<String> found =
-                        Utils.findClassesByAnnotation(pkg.trim(), Controller.class);
+                List<String> found
+                        = Utils.findClassesByAnnotation(pkg.trim(), Controller.class);
 
                 controllers.addAll(found);
 
@@ -46,8 +46,8 @@ public class FrontControllerListener implements ServletContextListener {
 
                             if (method.isAnnotationPresent(RequestMapping.class)) {
 
-                                RequestMapping mapping =
-                                        method.getAnnotation(RequestMapping.class);
+                                RequestMapping mapping
+                                        = method.getAnnotation(RequestMapping.class);
                                 boolean webApi = method.isAnnotationPresent(WebAPI.class);
 
                                 routes.add(
@@ -55,8 +55,8 @@ public class FrontControllerListener implements ServletContextListener {
                                                 mapping.url(),
                                                 mapping.method(),
                                                 className,
-                                        method.getName(),
-                                        webApi
+                                                method.getName(),
+                                                webApi
                                         )
                                 );
                             }

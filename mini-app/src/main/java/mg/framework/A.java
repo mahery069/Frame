@@ -29,17 +29,20 @@ public class A {
     }
 
     // ---------------- SPRINT 7 : de la vue vers le contrôleur ----------------
-
-    /** GET /form : affiche le formulaire (vue form.jsp). */
+    /**
+     * GET /form : affiche le formulaire (vue form.jsp).
+     */
     @RequestMapping(url = "/form")
     public ModelAndView formulaire() {
         return new ModelAndView("form");
     }
 
-    /** POST /save : reçoit les champs "nom" et "age" du formulaire. */
+    /**
+     * POST /save : reçoit les champs "nom" et "age" du formulaire.
+     */
     @RequestMapping(url = "/save", method = "POST")
     public ModelAndView save(@RequestParam("nom") String nom,
-                             @RequestParam("age") int age) {
+            @RequestParam("age") int age) {
         ModelAndView mv = new ModelAndView("resultat");
         mv.addObject("nom", nom);
         mv.addObject("age", age);
@@ -47,6 +50,7 @@ public class A {
     }
 
     public static class Employee {
+
         private int id;
         private String nom;
         private String poste;
