@@ -27,7 +27,7 @@ public ModelAndView bonjour(){
     }
 
     @WebAPI
-    @RequestMapping(url = "/api/employee")
+    @RequestMapping(url = "/api/employee", method = "GET")
     public Employee getEmployee() {
         return new Employee(1, "Mahery", "Developpeur Java");
     }
@@ -41,6 +41,18 @@ public ModelAndView bonjour(){
             this.id = id;
             this.nom = nom;
             this.poste = poste;
+        }
+
+        public int getId() {
+            return id;
+        }
+
+        public String getNom() {
+            return nom;
+        }
+
+        public String getPoste() {
+            return poste;
         }
     }
 }
