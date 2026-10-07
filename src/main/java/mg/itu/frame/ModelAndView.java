@@ -15,7 +15,7 @@ public class ModelAndView {
     public ModelAndView(String url) {
         this.url = url;
         this.data = new HashMap<>();
-    }1  HU8 CF GBN,.;.;
+    }
 
     public String getUrl() {
         return url;
