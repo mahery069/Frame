@@ -10,6 +10,9 @@
         <param-value>mg.framework</param-value>
     </context-param>
 
+    <listener>
+        <listener-class>mg.itu.frame.FrontControllerListener</listener-class>
+    </listener>
     <servlet>
         <servlet-name>front-controller</servlet-name>
         <servlet-class>mg.itu.frame.FrontControllerServlet</servlet-class>
