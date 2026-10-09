@@ -1,1 +1,3 @@
+src/main/java/mg/framework/Employe.java
+src/main/java/mg/framework/Diplome.java
 src/main/java/mg/framework/A.java

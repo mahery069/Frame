@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import mg.itu.annotation.Controller.Controller;
 import mg.itu.annotation.RequestMapping;
+import mg.itu.annotation.RequestParam;
 import mg.itu.annotation.WebAPI.WebAPI;
 import mg.itu.utils.Utils;
 
@@ -14,7 +15,10 @@ import java.util.ArrayList;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 import java.util.List;
 import java.util.Map;
@@ -253,6 +257,12 @@ public class FrontControllerServlet extends HttpServlet {
                 continue;
             }
 
+            // argument objet (ex: Employe, Diplome) : instance créée et remplie depuis le formulaire
+            if (!estTypeSimple(type)) {
+                args[i] = construireObjet(type, prefixeObjet(p), req);
+                continue;
+            }
+
             String nom = nomParametre(p);
             String brut = req.getParameter(nom);
             try {
@@ -263,6 +273,101 @@ public class FrontControllerServlet extends HttpServlet {
             }
         }
         return args;
+    }
+
+    /**
+     * Types qu'on sait convertir directement depuis un champ de formulaire.
+     */
+    private boolean estTypeSimple(Class<?> type) {
+        return type.isPrimitive()
+                || type == String.class
+                || type == Integer.class || type == Long.class
+                || type == Double.class || type == Boolean.class;
+    }
+
+    /**
+     * Préfixe des champs de formulaire d'un argument objet :
+     * save(Employe employe, Diplome diplome) -> "employe" et "diplome".
+     * @RequestParam("x") sinon nom de l'argument (javac -parameters), sinon
+     * nom de la classe en minuscule (Employe -> employe).
+     */
+    private String prefixeObjet(Parameter p) {
+        RequestParam rp = p.getAnnotation(RequestParam.class);
+        if (rp != null && !rp.value().isEmpty()) {
+            return rp.value();
+        }
+        if (p.isNamePresent()) {
+            return p.getName();
+        }
+        String simple = p.getType().getSimpleName();
+        return Character.toLowerCase(simple.charAt(0)) + simple.substring(1);
+    }
+
+    /**
+     * Crée une instance (constructeur sans argument) puis remplit chaque
+     * attribut avec le champ de formulaire correspondant :
+     * name="employe.nom" -> employe.nom, name="diplome.nom" -> diplome.nom.
+     * Sans préfixe, name="nom" est aussi accepté. On passe par le setter
+     * s'il existe (setNom), sinon directement par l'attribut.
+     */
+    private Object construireObjet(Class<?> type, String prefixe, HttpServletRequest req) {
+        Object instance;
+        try {
+            Constructor<?> constructeur = type.getDeclaredConstructor();
+            constructeur.setAccessible(true);
+            instance = constructeur.newInstance();
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException(
+                    "Impossible d'instancier " + type.getName()
+                    + " : il faut un constructeur sans argument", e);
+        }
+
+        for (Class<?> c = type; c != null && c != Object.class; c = c.getSuperclass()) {
+            for (Field champ : c.getDeclaredFields()) {
+                int mod = champ.getModifiers();
+                if (Modifier.isStatic(mod) || Modifier.isFinal(mod) || !estTypeSimple(champ.getType())) {
+                    continue;
+                }
+                String nomChamp = prefixe + "." + champ.getName();
+                String brut = req.getParameter(nomChamp);
+                if (brut == null) {
+                    nomChamp = champ.getName();
+                    brut = req.getParameter(nomChamp);
+                }
+                if (brut == null) {
+                    continue; // champ absent du formulaire : on garde la valeur par défaut
+                }
+                Object valeur;
+                try {
+                    valeur = convertir(brut, champ.getType());
+                } catch (NumberFormatException e) {
+                    throw new IllegalArgumentException(
+                            "Valeur invalide pour le champ '" + nomChamp + "' : " + brut);
+                }
+                affecter(instance, champ, valeur);
+            }
+        }
+        return instance;
+    }
+
+    private void affecter(Object instance, Field champ, Object valeur) {
+        String nom = champ.getName();
+        String setter = "set" + Character.toUpperCase(nom.charAt(0)) + nom.substring(1);
+        try {
+            Method m = instance.getClass().getMethod(setter, champ.getType());
+            m.invoke(instance, valeur);
+            return;
+        } catch (NoSuchMethodException e) {
+            // pas de setter : affectation directe de l'attribut
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("Erreur dans " + setter + "()", e);
+        }
+        try {
+            champ.setAccessible(true);
+            champ.set(instance, valeur);
+        } catch (IllegalAccessException e) {
+            throw new IllegalStateException("Impossible d'affecter l'attribut " + nom, e);
+        }
     }
 
     /**

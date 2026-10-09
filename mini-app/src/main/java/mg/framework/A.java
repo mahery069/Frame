@@ -2,7 +2,6 @@ package mg.framework;
 
 import mg.itu.annotation.Controller.Controller;
 import mg.itu.annotation.RequestMapping;
-import mg.itu.annotation.RequestParam;
 import mg.itu.annotation.WebAPI.WebAPI;
 import mg.itu.frame.ModelAndView;
 
@@ -38,14 +37,14 @@ public class A {
     }
 
     /**
-     * POST /save : reçoit les champs "nom" et "age" du formulaire.
+     * POST /save : le framework crée l'Employe et le Diplome et les remplit
+     * à partir du formulaire (employe.nom, employe.prenom, diplome.nom...).
      */
     @RequestMapping(url = "/save", method = "POST")
-    public ModelAndView save(@RequestParam("nom") String nom,
-            @RequestParam("age") int age) {
+    public ModelAndView save(Employe employe, Diplome diplome) {
         ModelAndView mv = new ModelAndView("resultat");
-        mv.addObject("nom", nom);
-        mv.addObject("age", age);
+        mv.addObject("employe", employe);
+        mv.addObject("diplome", diplome);
         return mv;
     }
 
