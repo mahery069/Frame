@@ -18,7 +18,8 @@ mkdir -p $BUILD_DIR/WEB-INF/lib             # dossier pour les JARs embarqués
 
 # Compilation des fichiers Java avec le JAR des Servlets + framework
 find $SRC_DIR -name "*.java" > sources.txt
-javac -cp "$SERVLET_API_JAR:$FRAMEWORK_JAR" -d $BUILD_DIR/WEB-INF/classes @sources.txt
+# -parameters : garde le nom des arguments (employe, diplome) pour le mapping automatique
+javac -parameters -cp "$SERVLET_API_JAR:$FRAMEWORK_JAR" -d $BUILD_DIR/WEB-INF/classes @sources.txt
 
 # Copier le framework JAR dans WEB-INF/lib (Tomcat le charge automatiquement)
 cp $FRAMEWORK_JAR $BUILD_DIR/WEB-INF/lib/
