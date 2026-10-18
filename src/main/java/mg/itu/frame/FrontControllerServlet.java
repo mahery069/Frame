@@ -2,9 +2,11 @@ package mg.itu.frame;
 
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.Part;
 import mg.itu.annotation.Controller.Controller;
 import mg.itu.annotation.RequestMapping;
 import mg.itu.annotation.RequestParam;
@@ -13,6 +15,7 @@ import mg.itu.utils.Utils;
 
 import java.util.ArrayList;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
@@ -23,6 +26,8 @@ import java.lang.reflect.Parameter;
 import java.util.List;
 import java.util.Map;
 
+// SPRINT 8 : active la lecture des formulaires enctype="multipart/form-data" (getPart)
+@MultipartConfig(maxFileSize = 10 * 1024 * 1024, maxRequestSize = 20 * 1024 * 1024)
 public class FrontControllerServlet extends HttpServlet {
 
     public static class RouteInfo {
@@ -257,6 +262,13 @@ public class FrontControllerServlet extends HttpServlet {
                 continue;
             }
 
+            // SPRINT 8 : argument fichier (MapFile ou byte[]) lu depuis la partie multipart
+            if (estTypeFichier(type)) {
+                Part part = lireFichier(req, nomParametre(p));
+                args[i] = (part == null) ? null : convertirFichier(part, type);
+                continue;
+            }
+
             // argument objet (ex: Employe, Diplome) : instance créée et remplie depuis le formulaire
             if (!estTypeSimple(type)) {
                 args[i] = construireObjet(type, prefixeObjet(p), req);
@@ -325,7 +337,23 @@ public class FrontControllerServlet extends HttpServlet {
         for (Class<?> c = type; c != null && c != Object.class; c = c.getSuperclass()) {
             for (Field champ : c.getDeclaredFields()) {
                 int mod = champ.getModifiers();
-                if (Modifier.isStatic(mod) || Modifier.isFinal(mod) || !estTypeSimple(champ.getType())) {
+                if (Modifier.isStatic(mod) || Modifier.isFinal(mod)) {
+                    continue;
+                }
+
+                // SPRINT 8 : attribut fichier (ex: rectoCin de type MapFile)
+                if (estTypeFichier(champ.getType())) {
+                    Part part = lireFichier(req, prefixe + "." + champ.getName());
+                    if (part == null) {
+                        part = lireFichier(req, champ.getName());
+                    }
+                    if (part != null) {
+                        affecter(instance, champ, convertirFichier(part, champ.getType()));
+                    }
+                    continue;
+                }
+
+                if (!estTypeSimple(champ.getType())) {
                     continue;
                 }
                 String nomChamp = prefixe + "." + champ.getName();
@@ -348,6 +376,58 @@ public class FrontControllerServlet extends HttpServlet {
             }
         }
         return instance;
+    }
+
+    /**
+     * Types remplis à partir d'un fichier envoyé (input type="file").
+     */
+    private boolean estTypeFichier(Class<?> type) {
+        return type == MapFile.class || type == byte[].class;
+    }
+
+    /**
+     * Retourne la partie fichier envoyée sous ce name, ou null si la requête
+     * n'est pas multipart, si le champ est absent ou si aucun fichier n'a été
+     * choisi. Les fichiers ne passent pas par getParameter() : il faut getPart().
+     */
+    private Part lireFichier(HttpServletRequest req, String nom) {
+        String contentType = req.getContentType();
+        if (contentType == null || !contentType.toLowerCase().startsWith("multipart/")) {
+            return null;
+        }
+        try {
+            Part part = req.getPart(nom);
+            if (part == null || part.getSubmittedFileName() == null || part.getSubmittedFileName().isEmpty()) {
+                return null;
+            }
+            return part;
+        } catch (IOException | ServletException e) {
+            throw new IllegalStateException("Impossible de lire le fichier '" + nom + "'", e);
+        }
+    }
+
+    /**
+     * Part -> MapFile (nom, extension, binaire) ou directement byte[].
+     */
+    private Object convertirFichier(Part part, Class<?> type) {
+        byte[] binaire;
+        try (InputStream in = part.getInputStream()) {
+            binaire = in.readAllBytes();
+        } catch (IOException e) {
+            throw new IllegalStateException("Impossible de lire le contenu de " + part.getSubmittedFileName(), e);
+        }
+        if (type == byte[].class) {
+            return binaire;
+        }
+
+        // certains navigateurs envoient le chemin complet : on ne garde que le nom
+        String nomComplet = part.getSubmittedFileName();
+        nomComplet = nomComplet.substring(Math.max(nomComplet.lastIndexOf('/'), nomComplet.lastIndexOf('\\')) + 1);
+
+        int point = nomComplet.lastIndexOf('.');
+        String nom = (point > 0) ? nomComplet.substring(0, point) : nomComplet;
+        String extension = (point > 0) ? nomComplet.substring(point + 1) : "";
+        return new MapFile(nom, extension, binaire);
     }
 
     private void affecter(Object instance, Field champ, Object valeur) {

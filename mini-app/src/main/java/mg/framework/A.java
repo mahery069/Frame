@@ -48,6 +48,27 @@ public class A {
         return mv;
     }
 
+    // ---------------- SPRINT 8 : upload de fichiers ----------------
+    /**
+     * GET /employe : formulaire avec les scans de la CIN (vue employe-form.jsp).
+     */
+    @RequestMapping(url = "/employe")
+    public ModelAndView formulaireEmploye() {
+        return new ModelAndView("employe-form");
+    }
+
+    /**
+     * POST /employe/save : le framework remplit nom, prenom et les MapFile
+     * rectoCin / versoCin à partir du formulaire multipart.
+     * Le stockage des fichiers (dossier, BLOB...) reste à faire ici si besoin.
+     */
+    @RequestMapping(url = "/employe/save", method = "POST")
+    public ModelAndView saveEmploye(Employe employe) {
+        ModelAndView mv = new ModelAndView("employe-resultat");
+        mv.addObject("employe", employe);
+        return mv;
+    }
+
     public static class Employee {
 
         private int id;
