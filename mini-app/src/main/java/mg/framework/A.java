@@ -1,6 +1,5 @@
 package mg.framework;
 
-import mg.itu.annotation.Auth;
 import mg.itu.annotation.Controller.Controller;
 import mg.itu.annotation.RequestMapping;
 import mg.itu.annotation.RequestParam;
@@ -72,7 +71,7 @@ public class A {
         return mv;
     }
 
-    // ---------------- SPRINT 10 : authentification par annotation @Auth ----------------
+    // ---------------- SPRINT 9 : gestion de session avec MySession ----------------
     /**
      * GET /login : formulaire de connexion (vue login.jsp).
      */
@@ -86,12 +85,13 @@ public class A {
      * Le framework synchronisera automatiquement MySession -> HttpSession.
      */
     @RequestMapping(url = "/login", method = "POST")
-    public ModelAndView login(@RequestParam("username") String username,
+    public ModelAndView login(@RequestParam("username") String username, 
                              @RequestParam("password") String password,
                              MySession session) {
         // Simulation d'authentification
         if ("admin".equals(username) && "admin".equals(password)) {
             session.set("user", username);
+            session.set("isLoggedIn", true);
             ModelAndView mv = new ModelAndView("dashboard");
             mv.addObject("username", username);
             return mv;
@@ -103,12 +103,14 @@ public class A {
     }
 
     /**
-     * GET /dashboard : page protégée par @Auth.
-     * Le framework vérifie automatiquement l'authentification avant l'exécution.
+     * GET /dashboard : page protégée, vérifie la session via MySession.
      */
-    @Auth
     @RequestMapping(url = "/dashboard")
     public ModelAndView dashboard(MySession session) {
+        Boolean isLoggedIn = (Boolean) session.get("isLoggedIn");
+        if (isLoggedIn == null || !isLoggedIn) {
+            return new ModelAndView("login");
+        }
         String username = (String) session.get("user");
         ModelAndView mv = new ModelAndView("dashboard");
         mv.addObject("username", username);
@@ -122,18 +124,6 @@ public class A {
     public ModelAndView logout(MySession session) {
         session.getAttributes().clear();
         return new ModelAndView("login");
-    }
-
-    /**
-     * GET /api/profil : API protégée par @Auth.
-     * Le framework vérifie automatiquement l'authentification avant l'exécution.
-     */
-    @Auth
-    @WebAPI
-    @RequestMapping(url = "/api/profil")
-    public String getProfil(MySession session) {
-        String username = (String) session.get("user");
-        return "Profil de " + username;
     }
 
     public static class Employee {
