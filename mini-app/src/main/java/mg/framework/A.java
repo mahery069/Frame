@@ -2,8 +2,10 @@ package mg.framework;
 
 import mg.itu.annotation.Controller.Controller;
 import mg.itu.annotation.RequestMapping;
+import mg.itu.annotation.RequestParam;
 import mg.itu.annotation.WebAPI.WebAPI;
 import mg.itu.frame.ModelAndView;
+import mg.itu.frame.MySession;
 
 @Controller
 public class A {
@@ -67,6 +69,61 @@ public class A {
         ModelAndView mv = new ModelAndView("employe-resultat");
         mv.addObject("employe", employe);
         return mv;
+    }
+
+    // ---------------- SPRINT 9 : gestion de session avec MySession ----------------
+    /**
+     * GET /login : formulaire de connexion (vue login.jsp).
+     */
+    @RequestMapping(url = "/login")
+    public ModelAndView loginForm() {
+        return new ModelAndView("login");
+    }
+
+    /**
+     * POST /login : authentification et stockage en session via MySession.
+     * Le framework synchronisera automatiquement MySession -> HttpSession.
+     */
+    @RequestMapping(url = "/login", method = "POST")
+    public ModelAndView login(@RequestParam("username") String username, 
+                             @RequestParam("password") String password,
+                             MySession session) {
+        // Simulation d'authentification
+        if ("admin".equals(username) && "admin".equals(password)) {
+            session.set("user", username);
+            session.set("isLoggedIn", true);
+            ModelAndView mv = new ModelAndView("dashboard");
+            mv.addObject("username", username);
+            return mv;
+        } else {
+            ModelAndView mv = new ModelAndView("login");
+            mv.addObject("error", "Identifiants incorrects");
+            return mv;
+        }
+    }
+
+    /**
+     * GET /dashboard : page protégée, vérifie la session via MySession.
+     */
+    @RequestMapping(url = "/dashboard")
+    public ModelAndView dashboard(MySession session) {
+        Boolean isLoggedIn = (Boolean) session.get("isLoggedIn");
+        if (isLoggedIn == null || !isLoggedIn) {
+            return new ModelAndView("login");
+        }
+        String username = (String) session.get("user");
+        ModelAndView mv = new ModelAndView("dashboard");
+        mv.addObject("username", username);
+        return mv;
+    }
+
+    /**
+     * GET /logout : déconnexion en supprimant les attributs de MySession.
+     */
+    @RequestMapping(url = "/logout")
+    public ModelAndView logout(MySession session) {
+        session.getAttributes().clear();
+        return new ModelAndView("login");
     }
 
     public static class Employee {
