@@ -1,0 +1,10 @@
+# Artefacts de compilation
+build/
+mini-app/build/
+
+# Fichiers de classe Java
+*.class
+
+# Fichiers JAR et WAR
+*.jar
+*.war
