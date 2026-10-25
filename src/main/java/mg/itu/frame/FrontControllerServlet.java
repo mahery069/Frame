@@ -6,6 +6,7 @@ import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.Part;
 import mg.itu.annotation.Controller.Controller;
 import mg.itu.annotation.RequestMapping;
@@ -25,10 +26,15 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 // SPRINT 8 : active la lecture des formulaires enctype="multipart/form-data" (getPart)
+// SPRINT 9 : singleton par contrôleur + gestion de MySession
 @MultipartConfig(maxFileSize = 10 * 1024 * 1024, maxRequestSize = 20 * 1024 * 1024)
 public class FrontControllerServlet extends HttpServlet {
+
+    // Cache des singletons de contrôleurs (une seule instance par classe)
+    private static final Map<String, Object> controllerSingletons = new ConcurrentHashMap<>();
 
     public static class RouteInfo {
 
@@ -121,9 +127,16 @@ public class FrontControllerServlet extends HttpServlet {
         }
 
         try {
-            // Instancier le contrôleur
+            // SPRINT 9 : récupérer ou créer le singleton du contrôleur
             Class<?> clazz = Class.forName(foundRoute.className);
-            Object instance = clazz.getDeclaredConstructor().newInstance();
+            Object instance = controllerSingletons.computeIfAbsent(foundRoute.className, className -> {
+                try {
+                    Class<?> c = Class.forName(className);
+                    return c.getDeclaredConstructor().newInstance();
+                } catch (Exception e) {
+                    throw new IllegalStateException("Impossible d'instancier " + className, e);
+                }
+            });
 
             // SPRINT 7 : retrouver la méthode (elle peut maintenant avoir des arguments)
             Method laMethode = trouverMethode(clazz, foundRoute);
@@ -139,6 +152,19 @@ public class FrontControllerServlet extends HttpServlet {
             }
 
             Object resultat = laMethode.invoke(instance, arguments);
+
+            // SPRINT 9 : synchroniser MySession -> HttpSession après l'invoke
+            for (Object arg : arguments) {
+                if (arg instanceof MySession) {
+                    MySession mySession = (MySession) arg;
+                    HttpSession httpSession = req.getSession(true);
+                    // Écraser tous les attributs de HttpSession avec ceux de MySession
+                    for (String attrName : mySession.getAttributeNames()) {
+                        httpSession.setAttribute(attrName, mySession.get(attrName));
+                    }
+                    break;
+                }
+            }
 
             if (foundRoute.webApi) {
                 resp.setContentType("application/json;charset=UTF-8");
@@ -242,8 +268,9 @@ public class FrontControllerServlet extends HttpServlet {
 
     /**
      * Construit le tableau d'arguments pour l'invocation : - HttpServletRequest
-     * / HttpServletResponse : injectés tels quels - autres types : valeur du
-     * paramètre de requête, convertie vers le type de l'argument
+     * / HttpServletResponse : injectés tels quels - MySession : créée et remplie
+     * depuis HttpSession - autres types : valeur du paramètre de requête,
+     * convertie vers le type de l'argument
      */
     private Object[] construireArguments(Method m, HttpServletRequest req, HttpServletResponse resp) {
         Parameter[] params = m.getParameters();
@@ -259,6 +286,21 @@ public class FrontControllerServlet extends HttpServlet {
             }
             if (HttpServletResponse.class.isAssignableFrom(type)) {
                 args[i] = resp;
+                continue;
+            }
+
+            // SPRINT 9 : MySession - créer et remplir depuis HttpSession
+            if (type == MySession.class) {
+                MySession mySession = new MySession();
+                HttpSession httpSession = req.getSession(false);
+                if (httpSession != null) {
+                    java.util.Enumeration<String> attrNames = httpSession.getAttributeNames();
+                    while (attrNames.hasMoreElements()) {
+                        String attrName = attrNames.nextElement();
+                        mySession.set(attrName, httpSession.getAttribute(attrName));
+                    }
+                }
+                args[i] = mySession;
                 continue;
             }
 
