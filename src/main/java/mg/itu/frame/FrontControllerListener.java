@@ -9,6 +9,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
+import mg.itu.annotation.Auth;
 import mg.itu.annotation.Controller.Controller;
 import mg.itu.annotation.RequestMapping;
 import mg.itu.annotation.WebAPI.WebAPI;
@@ -49,6 +50,7 @@ public class FrontControllerListener implements ServletContextListener {
                                 RequestMapping mapping
                                         = method.getAnnotation(RequestMapping.class);
                                 boolean webApi = method.isAnnotationPresent(WebAPI.class);
+                                boolean auth = method.isAnnotationPresent(Auth.class); // SPRINT 10
 
                                 routes.add(
                                         new FrontControllerServlet.RouteInfo(
@@ -56,7 +58,8 @@ public class FrontControllerListener implements ServletContextListener {
                                                 mapping.method(),
                                                 className,
                                                 method.getName(),
-                                                webApi
+                                                webApi,
+                                                auth
                                         )
                                 );
                             }

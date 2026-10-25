@@ -25,6 +25,10 @@
             <param-name>suffixe</param-name>
             <param-value>.jsp</param-value>
         </init-param>
+        <init-param>
+            <param-name>auth-session</param-name>
+            <param-value>user</param-value>
+        </init-param>
         <load-on-startup>1</load-on-startup>
     </servlet>
     

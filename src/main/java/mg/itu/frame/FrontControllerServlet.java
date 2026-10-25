@@ -6,7 +6,9 @@ import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.Part;
+import mg.itu.annotation.Auth;
 import mg.itu.annotation.Controller.Controller;
 import mg.itu.annotation.RequestMapping;
 import mg.itu.annotation.RequestParam;
@@ -25,10 +27,24 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 // SPRINT 8 : active la lecture des formulaires enctype="multipart/form-data" (getPart)
 @MultipartConfig(maxFileSize = 10 * 1024 * 1024, maxRequestSize = 20 * 1024 * 1024)
 public class FrontControllerServlet extends HttpServlet {
+
+    // Cache des singletons de contrôleurs (une seule instance par classe)
+    private static final Map<String, Object> controllerSingletons = new ConcurrentHashMap<>();
+
+    @Override
+    public void init() throws ServletException {
+        // SPRINT 10 : lire le nom de la variable de session pour l'authentification
+        String authSession = getServletConfig().getInitParameter("auth-session");
+        if (authSession != null && !authSession.isBlank()) {
+            getServletContext().setAttribute("auth-session", authSession);
+        }
+        // Si absent ou vide : l'application démarre mais les URLs @Auth renverront une erreur
+    }
 
     public static class RouteInfo {
 
@@ -37,13 +53,15 @@ public class FrontControllerServlet extends HttpServlet {
         String className;
         String methodName;
         boolean webApi;
+        boolean auth; // SPRINT 10 : indique si l'authentification est requise
 
-        RouteInfo(String url, String httpMethod, String className, String methodName, boolean webApi) {
+        RouteInfo(String url, String httpMethod, String className, String methodName, boolean webApi, boolean auth) {
             this.url = url;
             this.httpMethod = httpMethod;
             this.className = className;
             this.methodName = methodName;
             this.webApi = webApi;
+            this.auth = auth;
         }
     }
 
@@ -120,10 +138,33 @@ public class FrontControllerServlet extends HttpServlet {
             return;
         }
 
+        // SPRINT 10 : vérifier l'authentification si @Auth est présent
+        if (foundRoute.auth) {
+            String authSessionVar = (String) getServletContext().getAttribute("auth-session");
+            if (authSessionVar == null || authSessionVar.isBlank()) {
+                resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                    "init-param 'auth-session' manquant dans web.xml");
+                return;
+            }
+            HttpSession session = req.getSession(false);
+            if (session == null || session.getAttribute(authSessionVar) == null) {
+                resp.sendError(HttpServletResponse.SC_UNAUTHORIZED,
+                    "Authentification requise pour " + path);
+                return;
+            }
+        }
+
         try {
-            // Instancier le contrôleur
+            // SPRINT 9 : récupérer ou créer le singleton du contrôleur
             Class<?> clazz = Class.forName(foundRoute.className);
-            Object instance = clazz.getDeclaredConstructor().newInstance();
+            Object instance = controllerSingletons.computeIfAbsent(foundRoute.className, className -> {
+                try {
+                    Class<?> c = Class.forName(className);
+                    return c.getDeclaredConstructor().newInstance();
+                } catch (Exception e) {
+                    throw new IllegalStateException("Impossible d'instancier " + className, e);
+                }
+            });
 
             // SPRINT 7 : retrouver la méthode (elle peut maintenant avoir des arguments)
             Method laMethode = trouverMethode(clazz, foundRoute);
@@ -139,6 +180,35 @@ public class FrontControllerServlet extends HttpServlet {
             }
 
             Object resultat = laMethode.invoke(instance, arguments);
+
+            // SPRINT 9 : synchroniser MySession -> HttpSession après l'invoke
+            for (Object arg : arguments) {
+                if (arg instanceof MySession) {
+                    MySession mySession = (MySession) arg;
+                    HttpSession httpSession = req.getSession(true);
+                    
+                    // SPRINT 10 : retirer les attributs qui ne sont plus dans MySession
+                    // (pour gérer correctement la déconnexion)
+                    java.util.Enumeration<String> existingAttrs = httpSession.getAttributeNames();
+                    while (existingAttrs.hasMoreElements()) {
+                        String attrName = existingAttrs.nextElement();
+                        if (!mySession.getAttributeNames().contains(attrName)) {
+                            httpSession.removeAttribute(attrName);
+                        }
+                    }
+                    
+                    // Écraser/créer les attributs de HttpSession avec ceux de MySession
+                    for (String attrName : mySession.getAttributeNames()) {
+                        httpSession.setAttribute(attrName, mySession.get(attrName));
+                    }
+                    
+                    // Si MySession est vide, invalider la session HTTP
+                    if (mySession.getAttributeNames().isEmpty()) {
+                        httpSession.invalidate();
+                    }
+                    break;
+                }
+            }
 
             if (foundRoute.webApi) {
                 resp.setContentType("application/json;charset=UTF-8");
@@ -203,12 +273,14 @@ public class FrontControllerServlet extends HttpServlet {
                         if (method.isAnnotationPresent(RequestMapping.class)) {
                             RequestMapping mapping = method.getAnnotation(RequestMapping.class);
                             boolean webApi = method.isAnnotationPresent(WebAPI.class);
+                            boolean auth = method.isAnnotationPresent(Auth.class); // SPRINT 10
                             routes.add(new RouteInfo(
                                     mapping.url(),
                                     mapping.method(),
                                     className,
                                     method.getName(),
-                                    webApi));
+                                    webApi,
+                                    auth));
                         }
                     }
                 } catch (Exception e) {
