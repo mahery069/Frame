@@ -8,3 +8,12 @@ mini-app/build/
 # Fichiers JAR et WAR
 *.jar
 *.war
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db

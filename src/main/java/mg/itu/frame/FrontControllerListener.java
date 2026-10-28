@@ -51,11 +51,6 @@ public class FrontControllerListener implements ServletContextListener {
                                         = method.getAnnotation(RequestMapping.class);
                                 boolean webApi = method.isAnnotationPresent(WebAPI.class);
                                 boolean auth = method.isAnnotationPresent(Auth.class); // SPRINT 10
-                                String[] roles = new String[0]; // SPRINT 10-BIS : rôles requis
-                                if (auth) {
-                                    Auth authAnnotation = method.getAnnotation(Auth.class);
-                                    roles = authAnnotation.value();
-                                }
 
                                 routes.add(
                                         new FrontControllerServlet.RouteInfo(
@@ -64,8 +59,7 @@ public class FrontControllerListener implements ServletContextListener {
                                                 className,
                                                 method.getName(),
                                                 webApi,
-                                                auth,
-                                                roles
+                                                auth
                                         )
                                 );
                             }
