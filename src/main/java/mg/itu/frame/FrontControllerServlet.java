@@ -211,11 +211,12 @@ public class FrontControllerServlet extends HttpServlet {
             }
 
             if (foundRoute.webApi) {
-                resp.setContentType("application/json;charset=UTF-8");
                 PrintWriter out = resp.getWriter();
                 if (resultat instanceof String) {
+                    resp.setContentType("text/plain;charset=UTF-8");
                     out.print((String) resultat);
                 } else {
+                    resp.setContentType("application/json;charset=UTF-8");
                     out.print(Utils.toJson(resultat));
                 }
                 return;
@@ -331,6 +332,21 @@ public class FrontControllerServlet extends HttpServlet {
             }
             if (HttpServletResponse.class.isAssignableFrom(type)) {
                 args[i] = resp;
+                continue;
+            }
+
+            // SPRINT 9 : MySession : charger les attributs depuis HttpSession
+            if (MySession.class.isAssignableFrom(type)) {
+                MySession mySession = new MySession();
+                HttpSession httpSession = req.getSession(false);
+                if (httpSession != null) {
+                    java.util.Enumeration<String> attrNames = httpSession.getAttributeNames();
+                    while (attrNames.hasMoreElements()) {
+                        String attrName = attrNames.nextElement();
+                        mySession.set(attrName, httpSession.getAttribute(attrName));
+                    }
+                }
+                args[i] = mySession;
                 continue;
             }
 
