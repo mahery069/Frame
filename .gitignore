@@ -1,0 +1,17 @@
+# Artefacts de compilation
+build/
+*.class
+*.jar
+
+# Fichiers WAR générés
+mini-app/build/
+*.war
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
