@@ -19,6 +19,11 @@ public class A {
         return mv;
     }
 
+    @RequestMapping(url = "/public")
+    public String publicEndpoint() {
+        return "Cette URL est publique - pas besoin d'authentification";
+    }
+
     @RequestMapping(url = "/salut", method = "POST")
     public String direSalut() {
         return "Salut";
