@@ -84,6 +84,7 @@ public class FrontControllerListener implements ServletContextListener {
 
     @Override
     public void contextDestroyed(ServletContextEvent sce) {
-
+        // SPRINT 11 : nettoyer le cache des singletons lors de l'arrêt de l'application
+        ControllerFactory.clear();
     }
 }

@@ -33,9 +33,6 @@ import java.util.concurrent.ConcurrentHashMap;
 @MultipartConfig(maxFileSize = 10 * 1024 * 1024, maxRequestSize = 20 * 1024 * 1024)
 public class FrontControllerServlet extends HttpServlet {
 
-    // Cache des singletons de contrôleurs (une seule instance par classe)
-    private static final Map<String, Object> controllerSingletons = new ConcurrentHashMap<>();
-
     @Override
     public void init() throws ServletException {
         // SPRINT 10 : lire le nom de la variable de session pour l'authentification
@@ -211,16 +208,11 @@ public class FrontControllerServlet extends HttpServlet {
         }
 
         try {
-            // SPRINT 9 : récupérer ou créer le singleton du contrôleur
+            // SPRINT 11 : récupérer l'instance du contrôleur via ControllerFactory
+            // - Avec @Singleton : une seule instance partagée
+            // - Sans @Singleton : nouvelle instance à chaque requête
             Class<?> clazz = Class.forName(foundRoute.className);
-            Object instance = controllerSingletons.computeIfAbsent(foundRoute.className, className -> {
-                try {
-                    Class<?> c = Class.forName(className);
-                    return c.getDeclaredConstructor().newInstance();
-                } catch (Exception e) {
-                    throw new IllegalStateException("Impossible d'instancier " + className, e);
-                }
-            });
+            Object instance = ControllerFactory.get(clazz);
 
             // SPRINT 7 : retrouver la méthode (elle peut maintenant avoir des arguments)
             Method laMethode = trouverMethode(clazz, foundRoute);
