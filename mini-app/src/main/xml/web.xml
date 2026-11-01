@@ -29,6 +29,10 @@
             <param-name>auth-session</param-name>
             <param-value>user</param-value>
         </init-param>
+        <init-param>
+            <param-name>auth-role</param-name>
+            <param-value>role</param-value>
+        </init-param>
         <load-on-startup>1</load-on-startup>
     </servlet>
     

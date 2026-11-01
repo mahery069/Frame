@@ -40,10 +40,15 @@ public class FrontControllerServlet extends HttpServlet {
     public void init() throws ServletException {
         // SPRINT 10 : lire le nom de la variable de session pour l'authentification
         String authSession = getServletConfig().getInitParameter("auth-session");
-        if (authSession != null && !authSession.isBlank()) {
+        if (authSession != null && !authSession.trim().isEmpty()) {
             getServletContext().setAttribute("auth-session", authSession);
         }
-        // Si absent ou vide : l'application démarre mais les URLs @Auth renverront une erreur
+        // SPRINT 10-BIS : lire le nom de la variable de session pour les rôles
+        String authRole = getServletConfig().getInitParameter("auth-role");
+        if (authRole != null && !authRole.trim().isEmpty()) {
+            getServletContext().setAttribute("auth-role", authRole);
+        }
+        // Si absent ou vide : l'application démarre mais les URLs @Auth avec rôles renverront une erreur
     }
 
     public static class RouteInfo {
@@ -54,14 +59,16 @@ public class FrontControllerServlet extends HttpServlet {
         String methodName;
         boolean webApi;
         boolean auth; // SPRINT 10 : indique si l'authentification est requise
+        String[] roles; // SPRINT 10-BIS : rôles requis pour accéder à la route
 
-        RouteInfo(String url, String httpMethod, String className, String methodName, boolean webApi, boolean auth) {
+        RouteInfo(String url, String httpMethod, String className, String methodName, boolean webApi, boolean auth, String[] roles) {
             this.url = url;
             this.httpMethod = httpMethod;
             this.className = className;
             this.methodName = methodName;
             this.webApi = webApi;
             this.auth = auth;
+            this.roles = roles;
         }
     }
 
@@ -91,7 +98,7 @@ public class FrontControllerServlet extends HttpServlet {
             routes = (List<RouteInfo>) getServletContext().getAttribute("mappingUrls");
         }
         if (routes == null) {
-            routes = List.of();
+            routes = java.util.Collections.emptyList();
         }
         if (routes.isEmpty()) {
             routes = chargerRoutes();
@@ -141,7 +148,7 @@ public class FrontControllerServlet extends HttpServlet {
         // SPRINT 10 : vérifier l'authentification si @Auth est présent
         if (foundRoute.auth) {
             String authSessionVar = (String) getServletContext().getAttribute("auth-session");
-            if (authSessionVar == null || authSessionVar.isBlank()) {
+            if (authSessionVar == null || authSessionVar.trim().isEmpty()) {
                 resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
                     "init-param 'auth-session' manquant dans web.xml");
                 return;
@@ -151,6 +158,55 @@ public class FrontControllerServlet extends HttpServlet {
                 resp.sendError(HttpServletResponse.SC_UNAUTHORIZED,
                     "Authentification requise pour " + path);
                 return;
+            }
+
+            // SPRINT 10-BIS : vérifier les rôles si @Auth avec rôles
+            if (foundRoute.roles != null && foundRoute.roles.length > 0) {
+                String authRoleVar = (String) getServletContext().getAttribute("auth-role");
+                if (authRoleVar == null || authRoleVar.trim().isEmpty()) {
+                    resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                        "init-param 'auth-role' manquant dans web.xml pour @Auth avec rôles");
+                    return;
+                }
+                Object roleObj = session.getAttribute(authRoleVar);
+                if (roleObj == null) {
+                    resp.sendError(HttpServletResponse.SC_FORBIDDEN,
+                        "Accès refusé : rôle requis " + java.util.Arrays.toString(foundRoute.roles));
+                    return;
+                }
+
+                // Convertir le rôle en liste de String (gérer String, Collection, tableau)
+                java.util.Set<String> userRoles = new java.util.HashSet<>();
+                if (roleObj instanceof String) {
+                    userRoles.add((String) roleObj);
+                } else if (roleObj instanceof java.util.Collection) {
+                    for (Object r : (java.util.Collection<?>) roleObj) {
+                        if (r instanceof String) {
+                            userRoles.add((String) r);
+                        }
+                    }
+                } else if (roleObj instanceof Object[]) {
+                    for (Object r : (Object[]) roleObj) {
+                        if (r instanceof String) {
+                            userRoles.add((String) r);
+                        }
+                    }
+                }
+
+                // Vérifier si au moins un rôle requis est présent
+                boolean authorized = false;
+                for (String requiredRole : foundRoute.roles) {
+                    if (userRoles.contains(requiredRole)) {
+                        authorized = true;
+                        break;
+                    }
+                }
+
+                if (!authorized) {
+                    resp.sendError(HttpServletResponse.SC_FORBIDDEN,
+                        "Accès refusé : rôle requis " + java.util.Arrays.toString(foundRoute.roles));
+                    return;
+                }
             }
         }
 
@@ -261,7 +317,7 @@ public class FrontControllerServlet extends HttpServlet {
         List<RouteInfo> routes = new ArrayList<>();
         String basePackages = getServletContext().getInitParameter("base-package");
 
-        if (basePackages == null || basePackages.isBlank()) {
+        if (basePackages == null || basePackages.trim().isEmpty()) {
             return routes;
         }
 
@@ -275,13 +331,19 @@ public class FrontControllerServlet extends HttpServlet {
                             RequestMapping mapping = method.getAnnotation(RequestMapping.class);
                             boolean webApi = method.isAnnotationPresent(WebAPI.class);
                             boolean auth = method.isAnnotationPresent(Auth.class); // SPRINT 10
+                            String[] roles = new String[0]; // SPRINT 10-BIS : rôles requis
+                            if (auth) {
+                                Auth authAnnotation = method.getAnnotation(Auth.class);
+                                roles = authAnnotation.value();
+                            }
                             routes.add(new RouteInfo(
                                     mapping.url(),
                                     mapping.method(),
                                     className,
                                     method.getName(),
                                     webApi,
-                                    auth));
+                                    auth,
+                                    roles));
                         }
                     }
                 } catch (Exception e) {
@@ -500,7 +562,13 @@ public class FrontControllerServlet extends HttpServlet {
     private Object convertirFichier(Part part, Class<?> type) {
         byte[] binaire;
         try (InputStream in = part.getInputStream()) {
-            binaire = in.readAllBytes();
+            java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
+            byte[] data = new byte[4096];
+            int nRead;
+            while ((nRead = in.read(data, 0, data.length)) != -1) {
+                buffer.write(data, 0, nRead);
+            }
+            binaire = buffer.toByteArray();
         } catch (IOException e) {
             throw new IllegalStateException("Impossible de lire le contenu de " + part.getSubmittedFileName(), e);
         }
