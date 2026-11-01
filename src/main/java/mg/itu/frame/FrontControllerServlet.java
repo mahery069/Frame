@@ -33,14 +33,11 @@ import java.util.concurrent.ConcurrentHashMap;
 @MultipartConfig(maxFileSize = 10 * 1024 * 1024, maxRequestSize = 20 * 1024 * 1024)
 public class FrontControllerServlet extends HttpServlet {
 
-    // Cache des singletons de contrôleurs (une seule instance par classe)
-    private static final Map<String, Object> controllerSingletons = new ConcurrentHashMap<>();
-
     @Override
     public void init() throws ServletException {
         // SPRINT 10 : lire le nom de la variable de session pour l'authentification
         String authSession = getServletConfig().getInitParameter("auth-session");
-        if (authSession != null && !authSession.isBlank()) {
+        if (authSession != null && !authSession.trim().isEmpty()) {
             getServletContext().setAttribute("auth-session", authSession);
         }
         // Si absent ou vide : l'application démarre mais les URLs @Auth renverront une erreur
@@ -91,7 +88,7 @@ public class FrontControllerServlet extends HttpServlet {
             routes = (List<RouteInfo>) getServletContext().getAttribute("mappingUrls");
         }
         if (routes == null) {
-            routes = List.of();
+            routes = java.util.Collections.emptyList();
         }
         if (routes.isEmpty()) {
             routes = chargerRoutes();
@@ -141,7 +138,7 @@ public class FrontControllerServlet extends HttpServlet {
         // SPRINT 10 : vérifier l'authentification si @Auth est présent
         if (foundRoute.auth) {
             String authSessionVar = (String) getServletContext().getAttribute("auth-session");
-            if (authSessionVar == null || authSessionVar.isBlank()) {
+            if (authSessionVar == null || authSessionVar.trim().isEmpty()) {
                 resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
                     "init-param 'auth-session' manquant dans web.xml");
                 return;
@@ -155,16 +152,11 @@ public class FrontControllerServlet extends HttpServlet {
         }
 
         try {
-            // SPRINT 9 : récupérer ou créer le singleton du contrôleur
+            // SPRINT 11 : récupérer l'instance du contrôleur via ControllerFactory
+            // - Avec @Singleton : une seule instance partagée
+            // - Sans @Singleton : nouvelle instance à chaque requête
             Class<?> clazz = Class.forName(foundRoute.className);
-            Object instance = controllerSingletons.computeIfAbsent(foundRoute.className, className -> {
-                try {
-                    Class<?> c = Class.forName(className);
-                    return c.getDeclaredConstructor().newInstance();
-                } catch (Exception e) {
-                    throw new IllegalStateException("Impossible d'instancier " + className, e);
-                }
-            });
+            Object instance = ControllerFactory.get(clazz);
 
             // SPRINT 7 : retrouver la méthode (elle peut maintenant avoir des arguments)
             Method laMethode = trouverMethode(clazz, foundRoute);
@@ -261,7 +253,7 @@ public class FrontControllerServlet extends HttpServlet {
         List<RouteInfo> routes = new ArrayList<>();
         String basePackages = getServletContext().getInitParameter("base-package");
 
-        if (basePackages == null || basePackages.isBlank()) {
+        if (basePackages == null || basePackages.trim().isEmpty()) {
             return routes;
         }
 
@@ -500,7 +492,13 @@ public class FrontControllerServlet extends HttpServlet {
     private Object convertirFichier(Part part, Class<?> type) {
         byte[] binaire;
         try (InputStream in = part.getInputStream()) {
-            binaire = in.readAllBytes();
+            java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
+            byte[] data = new byte[4096];
+            int nRead;
+            while ((nRead = in.read(data, 0, data.length)) != -1) {
+                buffer.write(data, 0, nRead);
+            }
+            binaire = buffer.toByteArray();
         } catch (IOException e) {
             throw new IllegalStateException("Impossible de lire le contenu de " + part.getSubmittedFileName(), e);
         }

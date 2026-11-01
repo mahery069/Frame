@@ -9,3 +9,4 @@ src/main/java/mg/itu/frame/MapFile.java
 src/main/java/mg/itu/frame/FrontControllerServlet.java
 src/main/java/mg/itu/frame/ModelAndView.java
 src/main/java/mg/itu/frame/MySession.java
+src/main/java/mg/itu/frame/ControllerFactory.java
