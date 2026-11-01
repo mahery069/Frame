@@ -97,6 +97,7 @@ public class A {
         // Simulation d'authentification
         if ("admin".equals(username) && "admin".equals(password)) {
             session.set("user", username);
+            session.set("role", "admin"); // SPRINT 10-BIS : stocker le rôle en session
             ModelAndView mv = new ModelAndView("dashboard");
             mv.addObject("username", username);
             return mv;
@@ -139,6 +140,19 @@ public class A {
     public String getProfil(MySession session) {
         String username = (String) session.get("user");
         return "Profil de " + username;
+    }
+
+    /**
+     * GET /admin : page protégée par @Auth("admin").
+     * Seuls les utilisateurs avec le rôle "admin" peuvent y accéder.
+     */
+    @Auth("admin")
+    @RequestMapping(url = "/admin")
+    public ModelAndView admin(MySession session) {
+        String username = (String) session.get("user");
+        ModelAndView mv = new ModelAndView("admin");
+        mv.addObject("username", username);
+        return mv;
     }
 
     public static class Employee {
